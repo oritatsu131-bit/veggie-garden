@@ -23,7 +23,6 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [form, setForm] = useState({ type: 'sowing', vegetable: '', note: '', photos: [] })
   const [expandedEvent, setExpandedEvent] = useState(null)
-  const [addingPhoto, setAddingPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const addPhotoRef = useRef(null)
 
@@ -60,17 +59,34 @@ export default function Calendar() {
     setExpandedEvent(null)
   }
 
+  function compressImage(file, callback) {
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 800
+        let w = img.width, h = img.height
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        callback(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+
   function handleFormPhotoUpload(e) {
     const files = Array.from(e.target.files)
     files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
+      compressImage(file, (url) => {
         setForm(f => ({
           ...f,
-          photos: [...f.photos, { id: Date.now() + Math.random(), url: ev.target.result }]
+          photos: [...f.photos, { id: Date.now() + Math.random(), url }]
         }))
-      }
-      reader.readAsDataURL(file)
+      })
     })
     e.target.value = ''
   }
@@ -94,20 +110,17 @@ export default function Calendar() {
   function handleAddPhotoToEvent(eventId, e) {
     const files = Array.from(e.target.files)
     files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
+      compressImage(file, (url) => {
         setEvents(prev => prev.map(event => {
           if (event.id !== eventId) return event
           return {
             ...event,
-            photos: [...(event.photos || []), { id: Date.now() + Math.random(), url: ev.target.result }]
+            photos: [...(event.photos || []), { id: Date.now() + Math.random(), url }]
           }
         }))
-      }
-      reader.readAsDataURL(file)
+      })
     })
     e.target.value = ''
-    setAddingPhoto(null)
   }
 
   function deletePhotoFromEvent(eventId, photoId) {
@@ -283,7 +296,6 @@ export default function Calendar() {
                       </div>
                     )}
                     <button className="btn-secondary" onClick={() => {
-                      setAddingPhoto(ev.id)
                       setTimeout(() => addPhotoRef.current?.click(), 100)
                     }}>
                       📷 写真を追加

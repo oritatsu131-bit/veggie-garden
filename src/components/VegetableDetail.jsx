@@ -155,14 +155,34 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
     onUpdate({ ...vegetable, memoEntries: updated })
   }
 
+  function compressImage(file, callback) {
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 800
+        let w = img.width
+        let h = img.height
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX }
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        callback(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+
   function handlePhotoUpload(e) {
     const files = Array.from(e.target.files)
     files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
+      compressImage(file, (compressedUrl) => {
         const newPhoto = {
           id: Date.now() + Math.random(),
-          url: ev.target.result,
+          url: compressedUrl,
           takenAt: photoDate,
         }
         setPhotos(prev => {
@@ -170,8 +190,7 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
           onUpdate({ ...vegetable, memoEntries, photos: updated })
           return updated
         })
-      }
-      reader.readAsDataURL(file)
+      })
     })
     e.target.value = ''
     setShowPhotoForm(false)
