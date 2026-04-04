@@ -79,9 +79,14 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
   const [adviceUpdatedAt, setAdviceUpdatedAt] = useState(vegetable.adviceUpdatedAt || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [notes, setNotes] = useState(vegetable.notes || '')
-  const [editingNotes, setEditingNotes] = useState(false)
+  const [memoEntries, setMemoEntries] = useState(
+    vegetable.memoEntries || (vegetable.notes ? [{ id: Date.now(), date: vegetable.addedAt.slice(0,10), text: vegetable.notes }] : [])
+  )
+  const [showMemoForm, setShowMemoForm] = useState(false)
+  const [memoForm, setMemoForm] = useState({ date: new Date().toISOString().slice(0,10), text: '' })
   const [photos, setPhotos] = useState(vegetable.photos || [])
+  const [photoDate, setPhotoDate] = useState(new Date().toISOString().slice(0,10))
+  const [showPhotoForm, setShowPhotoForm] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -132,10 +137,22 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
     }
   }
 
-  function saveNotes() {
-    const updated = { ...vegetable, notes }
-    onUpdate(updated)
-    setEditingNotes(false)
+  function addMemo(e) {
+    e.preventDefault()
+    if (!memoForm.text.trim()) return
+    const entry = { id: Date.now(), date: memoForm.date, text: memoForm.text.trim() }
+    const updated = [...memoEntries, entry].sort((a, b) => b.date.localeCompare(a.date))
+    setMemoEntries(updated)
+    onUpdate({ ...vegetable, memoEntries: updated })
+    setMemoForm({ date: new Date().toISOString().slice(0,10), text: '' })
+    setShowMemoForm(false)
+  }
+
+  function deleteMemo(id) {
+    if (!window.confirm('このメモを削除してもよいですか？')) return
+    const updated = memoEntries.filter(m => m.id !== id)
+    setMemoEntries(updated)
+    onUpdate({ ...vegetable, memoEntries: updated })
   }
 
   function handlePhotoUpload(e) {
@@ -146,23 +163,24 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
         const newPhoto = {
           id: Date.now() + Math.random(),
           url: ev.target.result,
-          takenAt: new Date().toISOString(),
+          takenAt: photoDate,
         }
         setPhotos(prev => {
-          const updated = [...prev, newPhoto]
-          onUpdate({ ...vegetable, notes, photos: updated })
+          const updated = [...prev, newPhoto].sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+          onUpdate({ ...vegetable, memoEntries, photos: updated })
           return updated
         })
       }
       reader.readAsDataURL(file)
     })
     e.target.value = ''
+    setShowPhotoForm(false)
   }
 
   function deletePhoto(photoId) {
     setPhotos(prev => {
       const updated = prev.filter(p => p.id !== photoId)
-      onUpdate({ ...vegetable, notes, photos: updated })
+      onUpdate({ ...vegetable, memoEntries, photos: updated })
       return updated
     })
   }
@@ -228,36 +246,47 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>📋 メモ</h3>
-          {!editingNotes && (
-            <button className="btn-secondary" onClick={() => setEditingNotes(true)}>
-              {notes ? '編集' : '+ 追加'}
-            </button>
-          )}
+          <button className="btn-secondary" onClick={() => setShowMemoForm(v => !v)}>
+            {showMemoForm ? 'キャンセル' : '+ 追加'}
+          </button>
         </div>
-        {editingNotes ? (
-          <div>
-            <textarea
-              rows={4}
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="育て方のメモや気づいたことを書いてください"
-              style={{ resize: 'vertical', marginBottom: 8 }}
-              autoFocus
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn-primary" onClick={saveNotes}>保存</button>
-              <button className="btn-secondary" onClick={() => { setNotes(vegetable.notes || ''); setEditingNotes(false) }}>キャンセル</button>
+
+        {showMemoForm && (
+          <form onSubmit={addMemo} style={{ marginBottom: 12, background: '#f9fbf7', borderRadius: 8, padding: 12 }}>
+            <div className="form-group">
+              <label>日付</label>
+              <input type="date" value={memoForm.date}
+                onChange={e => setMemoForm(f => ({ ...f, date: e.target.value }))} />
             </div>
-          </div>
+            <div className="form-group">
+              <label>内容</label>
+              <textarea rows={3} value={memoForm.text} autoFocus
+                onChange={e => setMemoForm(f => ({ ...f, text: e.target.value }))}
+                placeholder="気づいたことや作業内容を書いてください"
+                style={{ resize: 'vertical' }} />
+            </div>
+            <button type="submit" className="btn-primary">保存</button>
+          </form>
+        )}
+
+        {memoEntries.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#aaa' }}>メモはありません</p>
         ) : (
-          <div>
-            {notes ? (
-              <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: '#333' }}>{notes}</p>
-            ) : (
-              <p style={{ fontSize: 13, color: '#aaa' }}>メモはありません</p>
-            )}
-            <p style={{ fontSize: 12, color: '#bbb', marginTop: 8 }}>登録日: {new Date(vegetable.addedAt).toLocaleDateString('ja-JP')}</p>
-          </div>
+          memoEntries.map(entry => (
+            <div key={entry.id} style={{ borderLeft: '3px solid #4a7c3f', paddingLeft: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#4a7c3f' }}>
+                  {new Date(entry.date).toLocaleDateString('ja-JP')}
+                </span>
+                <button onClick={() => deleteMemo(entry.id)} style={{
+                  background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14
+                }}>✕</button>
+              </div>
+              <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: '#333', marginTop: 4 }}>
+                {entry.text}
+              </p>
+            </div>
+          ))
         )}
       </div>
 
@@ -265,40 +294,45 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>📷 写真</h3>
-          <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>+ 追加</button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handlePhotoUpload}
-          />
+          <button className="btn-secondary" onClick={() => setShowPhotoForm(v => !v)}>
+            {showPhotoForm ? 'キャンセル' : '+ 追加'}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple
+            style={{ display: 'none' }} onChange={handlePhotoUpload} />
         </div>
+
+        {showPhotoForm && (
+          <div style={{ marginBottom: 12, background: '#f9fbf7', borderRadius: 8, padding: 12 }}>
+            <div className="form-group">
+              <label>撮影日</label>
+              <input type="date" value={photoDate}
+                onChange={e => setPhotoDate(e.target.value)} />
+            </div>
+            <button className="btn-primary" onClick={() => fileInputRef.current.click()}>
+              📷 写真を選ぶ
+            </button>
+          </div>
+        )}
+
         {photos.length === 0 ? (
           <p style={{ fontSize: 13, color: '#aaa', textAlign: 'center', padding: '16px 0' }}>
-            写真はありません。「+ 追加」から写真を追加できます。
+            写真はありません
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             {photos.map(photo => (
               <div key={photo.id} style={{ position: 'relative' }}>
-                <img
-                  src={photo.url}
-                  alt="野菜の写真"
-                  style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8 }}
-                />
-                <button
-                  onClick={() => deletePhoto(photo.id)}
-                  style={{
-                    position: 'absolute', top: 4, right: 4,
-                    background: 'rgba(0,0,0,0.5)', color: 'white',
-                    border: 'none', borderRadius: '50%',
-                    width: 24, height: 24, cursor: 'pointer', fontSize: 12,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}
-                >✕</button>
-                <div style={{ fontSize: 10, color: '#888', marginTop: 2, textAlign: 'center' }}>
+                <img src={photo.url} alt="野菜の写真"
+                  style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8 }} />
+                <button onClick={() => {
+                  if (window.confirm('この写真を削除してもよいですか？')) deletePhoto(photo.id)
+                }} style={{
+                  position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)',
+                  color: 'white', border: 'none', borderRadius: '50%',
+                  width: 24, height: 24, cursor: 'pointer', fontSize: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>✕</button>
+                <div style={{ fontSize: 11, color: '#888', marginTop: 2, textAlign: 'center' }}>
                   {new Date(photo.takenAt).toLocaleDateString('ja-JP')}
                 </div>
               </div>
