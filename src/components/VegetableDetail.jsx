@@ -2,6 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 
+const EVENT_TYPES = [
+  { value: 'sowing', label: '種まき', emoji: '🌱', color: '#4caf50' },
+  { value: 'fertilize', label: '追肥', emoji: '💧', color: '#2196f3' },
+  { value: 'harvest', label: '収穫', emoji: '🥕', color: '#ff9800' },
+  { value: 'watering', label: '水やり', emoji: '💦', color: '#00bcd4' },
+  { value: 'pest', label: '病害虫対応', emoji: '🐛', color: '#f44336' },
+  { value: 'other', label: 'その他', emoji: '📝', color: '#9e9e9e' },
+]
+
 const SECTION_STYLES = [
   { bg: '#e8f5e9', border: '#4caf50', icon: '🌿', titleColor: '#2e7d32' },
   { bg: '#e3f2fd', border: '#2196f3', icon: '📅', titleColor: '#1565c0' },
@@ -79,6 +88,10 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
   const [adviceUpdatedAt, setAdviceUpdatedAt] = useState(vegetable.adviceUpdatedAt || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const calendarEvents = JSON.parse(localStorage.getItem('veggie-garden-events') || '[]')
+    .filter(e => e.vegetable === vegetable.name)
+    .sort((a, b) => b.date.localeCompare(a.date))
+
   const [memoEntries, setMemoEntries] = useState(
     vegetable.memoEntries || (vegetable.notes ? [{ id: Date.now(), date: vegetable.addedAt.slice(0,10), text: vegetable.notes }] : [])
   )
@@ -259,6 +272,39 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
           </div>
         )}
         {GEMINI_API_KEY && !loading && advice && <AdviceView text={advice} />}
+      </div>
+
+      {/* カレンダー作業記録 */}
+      <div className="card">
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f', marginBottom: 12 }}>📅 作業記録</h3>
+        {calendarEvents.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#aaa' }}>カレンダーに記録がありません</p>
+        ) : (
+          calendarEvents.map(ev => {
+            const type = EVENT_TYPES.find(t => t.value === ev.type)
+            return (
+              <div key={ev.id} style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'flex-start' }}>
+                <div style={{
+                  background: type?.color, color: 'white', borderRadius: 8,
+                  padding: '4px 8px', fontSize: 16, minWidth: 34, textAlign: 'center', flexShrink: 0,
+                }}>{type?.emoji}</div>
+                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#555', lineHeight: 1.6 }}>
+                    <span>{new Date(ev.date).toLocaleDateString('ja-JP')} ／ {type?.label}</span>
+                    {ev.note && <span style={{ fontWeight: 400, color: '#666', marginLeft: 6 }}>{ev.note}</span>}
+                  </div>
+                  {ev.photos?.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                      {ev.photos.map(p => (
+                        <img key={p.id} src={p.url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6 }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
 
       {/* メモ */}
