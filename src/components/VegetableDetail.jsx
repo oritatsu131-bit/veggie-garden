@@ -1,0 +1,311 @@
+import { useState, useEffect, useRef } from 'react'
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
+
+const SECTION_STYLES = [
+  { bg: '#e8f5e9', border: '#4caf50', icon: '🌿', titleColor: '#2e7d32' },
+  { bg: '#e3f2fd', border: '#2196f3', icon: '📅', titleColor: '#1565c0' },
+  { bg: '#fff8e1', border: '#ffb300', icon: '⚠️', titleColor: '#e65100' },
+  { bg: '#fce4ec', border: '#e91e63', icon: '💡', titleColor: '#880e4f' },
+]
+
+function AdviceView({ text }) {
+  // **太字** を除去してテキストだけ取り出す
+  function cleanText(t) {
+    return t.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').trim()
+  }
+
+  // 行を解析してセクションに分割
+  const lines = text.split('\n').filter(l => l.trim())
+  const sections = []
+  let current = null
+
+  for (const line of lines) {
+    const cleaned = cleanText(line)
+    // 見出し行（数字. または # で始まる）
+    if (/^#+\s/.test(line) || /^\d+[\.\)]\s/.test(line)) {
+      if (current) sections.push(current)
+      current = { title: cleaned.replace(/^#+\s/, '').replace(/^\d+[\.\)]\s/, ''), items: [] }
+    } else if (/^[-・*]\s/.test(line) || /^\s+[-・*]\s/.test(line)) {
+      if (!current) current = { title: '', items: [] }
+      current.items.push(cleaned.replace(/^[-・*]\s/, '').replace(/^\s+[-・*]\s/, ''))
+    } else if (cleaned) {
+      if (!current) current = { title: '', items: [] }
+      if (current.title === '') {
+        current.title = cleaned
+      } else {
+        current.items.push(cleaned)
+      }
+    }
+  }
+  if (current) sections.push(current)
+
+  // セクションが取れなかった場合はそのまま表示
+  if (sections.length === 0) {
+    return <p style={{ fontSize: 14, lineHeight: 1.8, color: '#333' }}>{cleanText(text)}</p>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {sections.map((section, i) => {
+        const style = SECTION_STYLES[i % SECTION_STYLES.length]
+        return (
+          <div key={i} style={{
+            background: style.bg,
+            border: `1px solid ${style.border}`,
+            borderRadius: 10,
+            padding: '10px 14px',
+          }}>
+            {section.title && (
+              <div style={{ fontWeight: 700, fontSize: 14, color: style.titleColor, marginBottom: section.items.length ? 8 : 0 }}>
+                {style.icon} {section.title}
+              </div>
+            )}
+            {section.items.map((item, j) => (
+              <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13, lineHeight: 1.7, color: '#333', marginTop: 4 }}>
+                <span style={{ color: style.border, fontWeight: 700, marginTop: 1 }}>•</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate }) {
+  const [advice, setAdvice] = useState(vegetable.savedAdvice || null)
+  const [adviceUpdatedAt, setAdviceUpdatedAt] = useState(vegetable.adviceUpdatedAt || null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [notes, setNotes] = useState(vegetable.notes || '')
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [photos, setPhotos] = useState(vegetable.photos || [])
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    // 保存済みアドバイスがない場合のみ自動取得
+    if (GEMINI_API_KEY && !vegetable.savedAdvice) fetchAdvice()
+  }, [vegetable.id])
+
+  async function fetchAdvice() {
+    setLoading(true)
+    setError(null)
+    try {
+      const method = vegetable.cultivationType === 'hydro' ? '水耕栽培' : '土耕栽培'
+      const methodTips = vegetable.cultivationType === 'hydro'
+        ? '水耕栽培特有の注意点（水質・pH・酸素供給・液体肥料の濃度など）'
+        : '土耕栽培特有の注意点（土の状態・水はけ・鉢の大きさ・有機肥料など）'
+      const prompt = `ベランダ菜園で「${vegetable.name}」を${method}で育てています。以下の情報を日本語で教えてください：
+
+1. ${method}での基本情報（特徴・育てやすさ・${method}との相性）
+2. 今の時期（${new Date().toLocaleDateString('ja-JP', { month: 'long' })}）に必要な管理ポイント
+3. ${methodTips}
+4. 今後1ヶ月で注意すべきこと
+
+回答は箇条書きで簡潔にまとめてください。`
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        }
+      )
+      const data = await response.json()
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (text) {
+        const now = new Date().toISOString()
+        setAdvice(text)
+        setAdviceUpdatedAt(now)
+        setError(null)
+        onUpdate({ ...vegetable, savedAdvice: text, adviceUpdatedAt: now })
+      } else {
+        setError('回答を取得できませんでした: ' + JSON.stringify(data))
+      }
+    } catch (e) {
+      setError('通信エラー: ' + e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function saveNotes() {
+    const updated = { ...vegetable, notes }
+    onUpdate(updated)
+    setEditingNotes(false)
+  }
+
+  function handlePhotoUpload(e) {
+    const files = Array.from(e.target.files)
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const newPhoto = {
+          id: Date.now() + Math.random(),
+          url: ev.target.result,
+          takenAt: new Date().toISOString(),
+        }
+        setPhotos(prev => {
+          const updated = [...prev, newPhoto]
+          onUpdate({ ...vegetable, notes, photos: updated })
+          return updated
+        })
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  function deletePhoto(photoId) {
+    setPhotos(prev => {
+      const updated = prev.filter(p => p.id !== photoId)
+      onUpdate({ ...vegetable, notes, photos: updated })
+      return updated
+    })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <button className="btn-secondary" onClick={onBack}>← 戻る</button>
+        <h2 style={{ fontSize: 20, fontWeight: 700, flex: 1 }}>{vegetable.name}</h2>
+        <button className="btn-danger" onClick={() => {
+          if (window.confirm(`「${vegetable.name}」を削除してもよいですか？`)) { onDelete(); onBack() }
+        }}>削除</button>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <span style={{
+          background: vegetable.cultivationType === 'hydro' ? '#e3f2fd' : '#e8f5e9',
+          color: vegetable.cultivationType === 'hydro' ? '#1565c0' : '#2e7d32',
+          border: `1px solid ${vegetable.cultivationType === 'hydro' ? '#90caf9' : '#a5d6a7'}`,
+          borderRadius: 6, padding: '3px 10px', fontSize: 13, fontWeight: 700,
+        }}>
+          {vegetable.cultivationType === 'hydro' ? '💧 水耕栽培' : '🪴 土耕栽培'}
+        </span>
+      </div>
+
+      {/* AI アドバイス */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>🤖 AI 栽培アドバイス</h3>
+            {adviceUpdatedAt && (
+              <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+                更新日: {new Date(adviceUpdatedAt).toLocaleDateString('ja-JP')}
+              </div>
+            )}
+          </div>
+          {GEMINI_API_KEY && !loading && (
+            <button className="btn-secondary" onClick={fetchAdvice} style={{ fontSize: 13 }}>
+              🔄 更新
+            </button>
+          )}
+        </div>
+        {!GEMINI_API_KEY && (
+          <div style={{ background: '#fff8e1', border: '1px solid #ffd54f', borderRadius: 8, padding: 12, fontSize: 14, color: '#795548' }}>
+            <p style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ Gemini API キーが未設定です</p>
+          </div>
+        )}
+        {GEMINI_API_KEY && loading && (
+          <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+            <p>AIがアドバイスを生成中...</p>
+          </div>
+        )}
+        {GEMINI_API_KEY && error && (
+          <div style={{ color: '#e53935', fontSize: 14 }}>
+            <p>{error}</p>
+            <button className="btn-secondary" style={{ marginTop: 8 }} onClick={fetchAdvice}>再試行</button>
+          </div>
+        )}
+        {GEMINI_API_KEY && !loading && advice && <AdviceView text={advice} />}
+      </div>
+
+      {/* メモ */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>📋 メモ</h3>
+          {!editingNotes && (
+            <button className="btn-secondary" onClick={() => setEditingNotes(true)}>
+              {notes ? '編集' : '+ 追加'}
+            </button>
+          )}
+        </div>
+        {editingNotes ? (
+          <div>
+            <textarea
+              rows={4}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="育て方のメモや気づいたことを書いてください"
+              style={{ resize: 'vertical', marginBottom: 8 }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-primary" onClick={saveNotes}>保存</button>
+              <button className="btn-secondary" onClick={() => { setNotes(vegetable.notes || ''); setEditingNotes(false) }}>キャンセル</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {notes ? (
+              <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: '#333' }}>{notes}</p>
+            ) : (
+              <p style={{ fontSize: 13, color: '#aaa' }}>メモはありません</p>
+            )}
+            <p style={{ fontSize: 12, color: '#bbb', marginTop: 8 }}>登録日: {new Date(vegetable.addedAt).toLocaleDateString('ja-JP')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* 写真 */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>📷 写真</h3>
+          <button className="btn-secondary" onClick={() => fileInputRef.current.click()}>+ 追加</button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handlePhotoUpload}
+          />
+        </div>
+        {photos.length === 0 ? (
+          <p style={{ fontSize: 13, color: '#aaa', textAlign: 'center', padding: '16px 0' }}>
+            写真はありません。「+ 追加」から写真を追加できます。
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {photos.map(photo => (
+              <div key={photo.id} style={{ position: 'relative' }}>
+                <img
+                  src={photo.url}
+                  alt="野菜の写真"
+                  style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8 }}
+                />
+                <button
+                  onClick={() => deletePhoto(photo.id)}
+                  style={{
+                    position: 'absolute', top: 4, right: 4,
+                    background: 'rgba(0,0,0,0.5)', color: 'white',
+                    border: 'none', borderRadius: '50%',
+                    width: 24, height: 24, cursor: 'pointer', fontSize: 12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >✕</button>
+                <div style={{ fontSize: 10, color: '#888', marginTop: 2, textAlign: 'center' }}>
+                  {new Date(photo.takenAt).toLocaleDateString('ja-JP')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

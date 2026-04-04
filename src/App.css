@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f7f2;
+  color: #2d4a1e;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background: #4a7c3f;
+  color: white;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.tab-nav {
+  display: flex;
+  background: #3a6b34;
+}
+
+.tab-nav button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-nav button.active {
+  background: #f5f7f2;
+  color: #4a7c3f;
+  font-weight: 700;
+}
+
+.app-main {
+  flex: 1;
+  padding: 16px;
+}
+
+/* 共通カード */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ボタン */
+.btn-primary {
+  background: #4a7c3f;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #3a6b34;
+}
+
+.btn-secondary {
+  background: white;
+  color: #4a7c3f;
+  border: 2px solid #4a7c3f;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-danger {
+  background: white;
+  color: #e53935;
+  border: 2px solid #e53935;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* フォーム */
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #dde8d8;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #4a7c3f;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a7a50;
+  margin-bottom: 4px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
