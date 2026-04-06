@@ -69,6 +69,14 @@ export default function VegetableList() {
     setSelectedVeg(updated)
   }
 
+  const calendarEvents = JSON.parse(localStorage.getItem('veggie-garden-events') || '[]')
+
+  function getTotalHarvest(vegName) {
+    return calendarEvents
+      .filter(e => e.type === 'harvest' && e.vegetable === vegName && e.harvestCount)
+      .reduce((sum, e) => sum + Number(e.harvestCount), 0)
+  }
+
   if (selectedVeg) {
     return (
       <VegetableDetail
@@ -161,7 +169,12 @@ export default function VegetableList() {
               }}>
                 {veg.cultivationType === 'hydro' ? '水耕' : '土耕'}
               </span>
-              <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>
+              {getTotalHarvest(veg.name) > 0 && (
+                <div style={{ fontSize: 12, color: '#ff9800', fontWeight: 700, marginTop: 6 }}>
+                  🥕 累計 {getTotalHarvest(veg.name)}個
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: '#bbb', marginTop: 4 }}>
                 {new Date(veg.addedAt).toLocaleDateString('ja-JP')}
               </div>
             </div>

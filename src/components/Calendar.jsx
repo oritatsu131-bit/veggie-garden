@@ -21,7 +21,7 @@ export default function Calendar() {
   })
   const [showForm, setShowForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState(null)
-  const [form, setForm] = useState({ type: 'sowing', vegetable: '', note: '', photos: [] })
+  const [form, setForm] = useState({ type: 'sowing', vegetable: '', note: '', photos: [], harvestCount: '' })
   const [expandedEvent, setExpandedEvent] = useState(null)
   const fileInputRef = useRef(null)
   const addPhotoRef = useRef(null)
@@ -54,7 +54,7 @@ export default function Calendar() {
 
   function openAddForm(d) {
     setSelectedDate(d)
-    setForm({ type: 'sowing', vegetable: vegetables[0]?.name || '', note: '', photos: [] })
+    setForm({ type: 'sowing', vegetable: vegetables[0]?.name || '', note: '', photos: [], harvestCount: '' })
     setShowForm(true)
     setExpandedEvent(null)
   }
@@ -213,6 +213,18 @@ export default function Calendar() {
                   onChange={e => setForm(f => ({ ...f, vegetable: e.target.value }))} />
               )}
             </div>
+            {form.type === 'harvest' && (
+              <div className="form-group">
+                <label>収穫個数</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="例：5"
+                  value={form.harvestCount}
+                  onChange={e => setForm(f => ({ ...f, harvestCount: e.target.value }))}
+                />
+              </div>
+            )}
             <div className="form-group">
               <label>メモ（任意）</label>
               <textarea rows={2} placeholder="作業の詳細など" value={form.note}
@@ -267,6 +279,9 @@ export default function Calendar() {
                   <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setExpandedEvent(isExpanded ? null : ev.id)}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>
                       {ev.date.split('-')[2]}日 - {ev.vegetable || '未設定'} / {type?.label}
+                      {ev.type === 'harvest' && ev.harvestCount && (
+                        <span style={{ marginLeft: 6, color: '#ff9800', fontWeight: 700 }}>🥕 {ev.harvestCount}個</span>
+                      )}
                     </div>
                     {ev.note && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{ev.note}</div>}
                     {(ev.photos?.length > 0) && (
