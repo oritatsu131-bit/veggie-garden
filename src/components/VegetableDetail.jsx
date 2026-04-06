@@ -83,7 +83,7 @@ function AdviceView({ text }) {
   )
 }
 
-export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate }) {
+export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate }) {
   const [advice, setAdvice] = useState(vegetable.savedAdvice || null)
   const [adviceUpdatedAt, setAdviceUpdatedAt] = useState(vegetable.adviceUpdatedAt || null)
   const [loading, setLoading] = useState(false)
@@ -223,8 +223,8 @@ export default function VegetableDetail({ vegetable, onBack, onDelete, onUpdate 
         <button className="btn-secondary" onClick={onBack}>← 戻る</button>
         <h2 style={{ fontSize: 20, fontWeight: 700, flex: 1 }}>{vegetable.name}</h2>
         <button className="btn-danger" onClick={() => {
-          if (window.confirm(`「${vegetable.name}」を削除してもよいですか？`)) { onDelete(); onBack() }
-        }}>削除</button>
+          if (window.confirm(`「${vegetable.name}」の栽培を終了して保管庫に移しますか？\n記録はそのまま保管されます。`)) { onArchive(); onBack() }
+        }}>栽培終了</button>
       </div>
       <div style={{ marginBottom: 16 }}>
         <span style={{
