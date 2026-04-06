@@ -27,6 +27,16 @@ export default function VegetableList() {
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archivedVegetables))
   }, [archivedVegetables])
 
+  async function fetchVegImage(veg) {
+    try {
+      const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
+      const data = await res.json()
+      if (data.thumbnail?.source) {
+        setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
+      }
+    } catch {}
+  }
+
   function addVegetable(e) {
     e.preventDefault()
     if (!newName.trim()) return
@@ -37,6 +47,7 @@ export default function VegetableList() {
       addedAt: new Date().toISOString(),
     }
     setVegetables(prev => [veg, ...prev])
+    fetchVegImage(veg)
     setNewName('')
     setCultivationType('soil')
     setShowForm(false)
@@ -156,9 +167,18 @@ export default function VegetableList() {
               style={{ cursor: 'pointer', margin: 0, padding: 14 }}
               onClick={() => setSelectedVeg(veg)}
             >
-              <div style={{ fontSize: 28, marginBottom: 8 }}>
-                {veg.cultivationType === 'hydro' ? '💧' : '🪴'}
-              </div>
+              {veg.vegImageUrl ? (
+                <img
+                  src={veg.vegImageUrl}
+                  alt={veg.name}
+                  style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              ) : (
+                <div style={{ fontSize: 28, marginBottom: 8 }}>
+                  {veg.cultivationType === 'hydro' ? '💧' : '🪴'}
+                </div>
+              )}
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6, wordBreak: 'break-all' }}>
                 {veg.name}
               </div>
