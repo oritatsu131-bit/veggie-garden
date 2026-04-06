@@ -100,6 +100,7 @@ export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate
   const [photos, setPhotos] = useState(vegetable.photos || [])
   const [photoDate, setPhotoDate] = useState(new Date().toISOString().slice(0,10))
   const [showPhotoForm, setShowPhotoForm] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -219,6 +220,15 @@ export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate
 
   return (
     <div>
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, cursor: 'zoom-out',
+        }}>
+          <img src={lightboxUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
         <button className="btn-secondary" onClick={onBack}>← 戻る</button>
         <h2 style={{ fontSize: 20, fontWeight: 700, flex: 1 }}>{vegetable.name}</h2>
@@ -296,7 +306,7 @@ export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate
                   {ev.photos?.length > 0 && (
                     <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
                       {ev.photos.map(p => (
-                        <img key={p.id} src={p.url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6 }} />
+                        <img key={p.id} src={p.url} alt="" onClick={() => setLightboxUrl(p.url)} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, cursor: 'zoom-in' }} />
                       ))}
                     </div>
                   )}
@@ -387,8 +397,8 @@ export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             {photos.map(photo => (
               <div key={photo.id} style={{ position: 'relative' }}>
-                <img src={photo.url} alt="野菜の写真"
-                  style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8 }} />
+                <img src={photo.url} alt="野菜の写真" onClick={() => setLightboxUrl(photo.url)}
+                  style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in' }} />
                 <button onClick={() => {
                   if (window.confirm('この写真を削除してもよいですか？')) deletePhoto(photo.id)
                 }} style={{

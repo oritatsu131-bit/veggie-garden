@@ -25,6 +25,7 @@ export default function Calendar() {
   const [expandedEvent, setExpandedEvent] = useState(null)
   const [editingEventId, setEditingEventId] = useState(null)
   const [editForm, setEditForm] = useState(null)
+  const [lightboxUrl, setLightboxUrl] = useState(null)
   const fileInputRef = useRef(null)
   const addPhotoRef = useRef(null)
 
@@ -158,6 +159,15 @@ export default function Calendar() {
 
   return (
     <div>
+      {lightboxUrl && (
+        <div onClick={() => setLightboxUrl(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, cursor: 'zoom-out',
+        }}>
+          <img src={lightboxUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        </div>
+      )}
       {/* 月ナビゲーション */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <button className="btn-secondary" onClick={prevMonth}>‹</button>
@@ -368,7 +378,7 @@ export default function Calendar() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
                         {ev.photos.map(photo => (
                           <div key={photo.id} style={{ position: 'relative' }}>
-                            <img src={photo.url} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8 }} />
+                            <img src={photo.url} alt="" onClick={() => setLightboxUrl(photo.url)} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in' }} />
                             <button onClick={() => deletePhotoFromEvent(ev.id, photo.id)} style={{
                               position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)',
                               color: 'white', border: 'none', borderRadius: '50%',
