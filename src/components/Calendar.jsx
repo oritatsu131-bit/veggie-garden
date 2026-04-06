@@ -23,6 +23,8 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [form, setForm] = useState({ type: 'sowing', vegetable: '', note: '', photos: [], harvestCount: '' })
   const [expandedEvent, setExpandedEvent] = useState(null)
+  const [editingEventId, setEditingEventId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
   const fileInputRef = useRef(null)
   const addPhotoRef = useRef(null)
 
@@ -105,6 +107,20 @@ export default function Calendar() {
   function deleteEvent(id) {
     setEvents(prev => prev.filter(e => e.id !== id))
     if (expandedEvent === id) setExpandedEvent(null)
+    if (editingEventId === id) setEditingEventId(null)
+  }
+
+  function startEdit(ev) {
+    setEditingEventId(ev.id)
+    setEditForm({ type: ev.type, vegetable: ev.vegetable || '', note: ev.note || '', harvestCount: ev.harvestCount || '', date: ev.date })
+    setExpandedEvent(null)
+  }
+
+  function saveEdit(e) {
+    e.preventDefault()
+    setEvents(prev => prev.map(ev => ev.id === editingEventId ? { ...ev, ...editForm } : ev))
+    setEditingEventId(null)
+    setEditForm(null)
   }
 
   function handleAddPhotoToEvent(eventId, e) {
@@ -269,32 +285,84 @@ export default function Calendar() {
           .map(ev => {
             const type = EVENT_TYPES.find(t => t.value === ev.type)
             const isExpanded = expandedEvent === ev.id
+            const isEditing = editingEventId === ev.id
             return (
               <div key={ev.id} className="card">
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{
-                    background: type?.color, color: 'white', borderRadius: 8,
+                    background: isEditing ? '#9e9e9e' : type?.color, color: 'white', borderRadius: 8,
                     padding: '4px 8px', fontSize: 18, minWidth: 36, textAlign: 'center'
-                  }}>{type?.emoji}</div>
-                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setExpandedEvent(isExpanded ? null : ev.id)}>
+                  }}>{isEditing ? '✏️' : type?.emoji}</div>
+                  <div style={{ flex: 1, cursor: isEditing ? 'default' : 'pointer' }} onClick={() => !isEditing && setExpandedEvent(isExpanded ? null : ev.id)}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>
                       {ev.date.split('-')[2]}日 - {ev.vegetable || '未設定'} / {type?.label}
                       {ev.type === 'harvest' && ev.harvestCount && (
                         <span style={{ marginLeft: 6, color: '#ff9800', fontWeight: 700 }}>🥕 {ev.harvestCount}個</span>
                       )}
                     </div>
-                    {ev.note && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{ev.note}</div>}
-                    {(ev.photos?.length > 0) && (
+                    {!isEditing && ev.note && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{ev.note}</div>}
+                    {!isEditing && (ev.photos?.length > 0) && (
                       <div style={{ fontSize: 12, color: '#4a7c3f', marginTop: 2 }}>📷 {ev.photos.length}枚</div>
                     )}
                   </div>
-                  <button className="btn-danger" onClick={() => {
-                    if (window.confirm('この記録を削除してもよいですか？')) deleteEvent(ev.id)
-                  }}>削除</button>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    {!isEditing && (
+                      <button className="btn-secondary" style={{ fontSize: 13, padding: '5px 10px' }} onClick={() => startEdit(ev)}>修正</button>
+                    )}
+                    <button className="btn-danger" onClick={() => {
+                      if (window.confirm('この記録を削除してもよいですか？')) deleteEvent(ev.id)
+                    }}>削除</button>
+                  </div>
                 </div>
 
+                {/* インライン編集フォーム */}
+                {isEditing && editForm && (
+                  <form onSubmit={saveEdit} style={{ marginTop: 12, background: '#f9fbf7', borderRadius: 8, padding: 12 }}>
+                    <div className="form-group">
+                      <label>日付</label>
+                      <input type="date" value={editForm.date}
+                        onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label>作業の種類</label>
+                      <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}>
+                        {EVENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>野菜</label>
+                      {vegetables.length > 0 ? (
+                        <select value={editForm.vegetable} onChange={e => setEditForm(f => ({ ...f, vegetable: e.target.value }))}>
+                          {vegetables.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                          <option value="">（未選択）</option>
+                        </select>
+                      ) : (
+                        <input type="text" value={editForm.vegetable}
+                          onChange={e => setEditForm(f => ({ ...f, vegetable: e.target.value }))} />
+                      )}
+                    </div>
+                    {editForm.type === 'harvest' && (
+                      <div className="form-group">
+                        <label>収穫個数</label>
+                        <input type="number" min="0" value={editForm.harvestCount}
+                          onChange={e => setEditForm(f => ({ ...f, harvestCount: e.target.value }))} />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label>メモ</label>
+                      <textarea rows={2} value={editForm.note}
+                        onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))}
+                        style={{ resize: 'vertical' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="submit" className="btn-primary">保存</button>
+                      <button type="button" className="btn-secondary" onClick={() => setEditingEventId(null)}>キャンセル</button>
+                    </div>
+                  </form>
+                )}
+
                 {/* 展開時：写真表示＋追加 */}
-                {isExpanded && (
+                {isExpanded && !isEditing && (
                   <div style={{ marginTop: 12 }}>
                     {ev.photos?.length > 0 && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
