@@ -379,7 +379,7 @@ export default function Calendar() {
                         {ev.photos.map(photo => (
                           <div key={photo.id} style={{ position: 'relative' }}>
                             <img src={photo.url} alt="" onClick={() => setLightboxUrl(photo.url)} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, cursor: 'zoom-in' }} />
-                            <button onClick={() => deletePhotoFromEvent(ev.id, photo.id)} style={{
+                            <button onClick={() => { if (window.confirm('この写真を削除してもよいですか？')) deletePhotoFromEvent(ev.id, photo.id) }} style={{
                               position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)',
                               color: 'white', border: 'none', borderRadius: '50%',
                               width: 24, height: 24, cursor: 'pointer', fontSize: 12
