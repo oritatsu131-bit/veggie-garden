@@ -208,7 +208,7 @@ export default function VegetableList() {
           onClick={() => setShowArchive(v => !v)}
           style={{
             width: '100%', padding: '12px', borderRadius: 10, cursor: 'pointer',
-            border: '2px dashed #c8d8c0', background: 'transparent',
+            border: '2px dashed #c8d8c0', background: 'white',
             color: '#7a9a6e', fontSize: 14, fontWeight: 600,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
