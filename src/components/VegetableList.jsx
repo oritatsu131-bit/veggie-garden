@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import VegetableDetail from './VegetableDetail'
 
 const STORAGE_KEY = 'veggie-garden-vegetables'
@@ -18,6 +18,11 @@ export default function VegetableList() {
   const [cultivationType, setCultivationType] = useState('soil')
   const [selectedVeg, setSelectedVeg] = useState(null)
   const [showArchive, setShowArchive] = useState(false)
+  const [draggingId, setDraggingId] = useState(null)
+  const [dragOverId, setDragOverId] = useState(null)
+  const touchDraggingRef = useRef(false)
+  const wasDragRef = useRef(false)
+  const touchStartPos = useRef(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vegetables))
@@ -73,6 +78,19 @@ export default function VegetableList() {
   function permanentDelete(id) {
     if (!window.confirm('記録も含めて完全に削除してもよいですか？')) return
     setArchivedVegetables(prev => prev.filter(v => v.id !== id))
+  }
+
+  function reorderVegetables(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return
+    setVegetables(prev => {
+      const arr = [...prev]
+      const fromIdx = arr.findIndex(v => v.id === fromId)
+      const toIdx = arr.findIndex(v => v.id === toId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const [item] = arr.splice(fromIdx, 1)
+      arr.splice(toIdx, 0, item)
+      return arr
+    })
   }
 
   function updateVegetable(updated) {
@@ -164,8 +182,53 @@ export default function VegetableList() {
             <div
               key={veg.id}
               className="card"
-              style={{ cursor: 'pointer', margin: 0, padding: 14 }}
-              onClick={() => setSelectedVeg(veg)}
+              data-veg-id={veg.id}
+              draggable="true"
+              onDragStart={() => setDraggingId(veg.id)}
+              onDragOver={(e) => { e.preventDefault(); if (draggingId !== veg.id) setDragOverId(veg.id) }}
+              onDrop={(e) => { e.preventDefault(); reorderVegetables(draggingId, veg.id); setDragOverId(null) }}
+              onDragEnd={() => { setDraggingId(null); setDragOverId(null) }}
+              onTouchStart={(e) => {
+                touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                touchDraggingRef.current = false
+                wasDragRef.current = false
+                setDraggingId(veg.id)
+              }}
+              onTouchMove={(e) => {
+                if (!touchStartPos.current) return
+                const dx = e.touches[0].clientX - touchStartPos.current.x
+                const dy = e.touches[0].clientY - touchStartPos.current.y
+                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                  touchDraggingRef.current = true
+                  wasDragRef.current = true
+                }
+                if (touchDraggingRef.current) {
+                  const touch = e.touches[0]
+                  const el = document.elementFromPoint(touch.clientX, touch.clientY)
+                  const card = el?.closest('[data-veg-id]')
+                  if (card) setDragOverId(Number(card.dataset.vegId))
+                }
+              }}
+              onTouchEnd={() => {
+                if (touchDraggingRef.current) reorderVegetables(draggingId, dragOverId)
+                touchDraggingRef.current = false
+                touchStartPos.current = null
+                setDraggingId(null)
+                setDragOverId(null)
+              }}
+              onClick={() => {
+                if (wasDragRef.current) { wasDragRef.current = false; return }
+                setSelectedVeg(veg)
+              }}
+              style={{
+                cursor: draggingId === veg.id ? 'grabbing' : 'grab',
+                margin: 0,
+                padding: 14,
+                opacity: draggingId === veg.id ? 0.4 : 1,
+                outline: dragOverId === veg.id && draggingId !== veg.id ? '2px solid #4a7c3f' : 'none',
+                transition: 'opacity 0.15s',
+                userSelect: 'none',
+              }}
             >
               {veg.vegImageUrl ? (
                 <img
