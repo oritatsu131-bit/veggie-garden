@@ -291,7 +291,7 @@ export default function Calendar() {
         <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>今月の記録</h3>
         {events
           .filter(e => e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
-          .sort((a, b) => a.date.localeCompare(b.date))
+          .sort((a, b) => b.date.localeCompare(a.date))
           .map(ev => {
             const type = EVENT_TYPES.find(t => t.value === ev.type)
             const isExpanded = expandedEvent === ev.id
