@@ -4,6 +4,7 @@ const STORAGE_KEY = 'veggie-garden-events'
 
 const EVENT_TYPES = [
   { value: 'sowing', label: '種まき', emoji: '🌱', color: '#4caf50' },
+  { value: 'planting', label: '苗植付け', emoji: '🌿', color: '#66bb6a' },
   { value: 'fertilize', label: '追肥', emoji: '💧', color: '#2196f3' },
   { value: 'harvest', label: '収穫', emoji: '🥕', color: '#ff9800' },
   { value: 'watering', label: '水やり', emoji: '💦', color: '#00bcd4' },
