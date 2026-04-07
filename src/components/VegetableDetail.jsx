@@ -317,6 +317,55 @@ export default function VegetableDetail({ vegetable, onBack, onArchive, onUpdate
         )}
       </div>
 
+      {/* 収穫グラフ */}
+      {(() => {
+        const byDate = {}
+        calendarEvents
+          .filter(e => e.type === 'harvest' && e.harvestCount)
+          .forEach(e => { byDate[e.date] = (byDate[e.date] || 0) + Number(e.harvestCount) })
+        const dates = Object.keys(byDate).sort()
+        let cum = 0
+        const data = dates.map(date => {
+          cum += byDate[date]
+          return { date, count: byDate[date], cumulative: cum }
+        })
+        const total = cum
+        const maxVal = total || 1
+        if (data.length === 0) return null
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#4a7c3f' }}>🥕 収穫サマリー</h3>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#ff9800' }}>累計 {total}個</span>
+            </div>
+            <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, minWidth: 'max-content', paddingTop: 4 }}>
+                {data.map(({ date, count, cumulative }) => (
+                  <div key={date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 48 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#ff9800', marginBottom: 3 }}>
+                      {cumulative}
+                    </div>
+                    <div style={{
+                      width: 36,
+                      height: Math.max(6, Math.round((cumulative / maxVal) * 120)),
+                      background: 'linear-gradient(to top, #e65100, #ffb300)',
+                      borderRadius: '4px 4px 0 0',
+                      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                      paddingTop: 3,
+                    }}>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 700 }}>+{count}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#aaa', marginTop: 4, textAlign: 'center', lineHeight: 1.3 }}>
+                      {date.slice(5).replace('-', '/')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* メモ */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
