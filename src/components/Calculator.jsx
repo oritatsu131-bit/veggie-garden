@@ -83,71 +83,170 @@ function PesticideCalc() {
 }
 
 function FertilizerCalc() {
+  const [mode, setMode] = useState('perL') // 'perL' or 'planter'
   const [soilAmount, setSoilAmount] = useState('')
   const [soilUnit, setSoilUnit] = useState('L')
   const [fertPerUnit, setFertPerUnit] = useState('')
-  const [fertUnitBase, setFertUnitBase] = useState('L')
+  // planter mode
+  const [planterSize, setPlanterSize] = useState('')
+  const [planterFert, setPlanterFert] = useState('')
 
   const soilL = soilUnit === 'ml' ? parseFloat(soilAmount) / 1000 : parseFloat(soilAmount)
-  const baseL = fertUnitBase === 'ml' ? parseFloat(fertPerUnit) / 1000 : parseFloat(fertUnitBase === 'L' ? 1 : 1)
+
+  // perL mode
   const fertNum = parseFloat(fertPerUnit)
-  const isValid = soilL > 0 && fertNum > 0 && !isNaN(soilL) && !isNaN(fertNum)
-  const result = isValid ? soilL * fertNum : 0
+  const isValidPerL = soilL > 0 && fertNum > 0 && !isNaN(soilL) && !isNaN(fertNum)
+  const resultPerL = isValidPerL ? soilL * fertNum : 0
+
+  // planter mode
+  const planterSizeNum = parseFloat(planterSize)
+  const planterFertNum = parseFloat(planterFert)
+  const isValidPlanter = soilL > 0 && planterSizeNum > 0 && planterFertNum > 0
+  const resultPlanter = isValidPlanter ? (soilL / planterSizeNum) * planterFertNum : 0
+
+  const tabStyle = (active) => ({
+    flex: 1, padding: '8px 4px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+    border: `2px solid ${active ? '#795548' : '#ddd'}`,
+    background: active ? '#efebe9' : 'white',
+    color: active ? '#4e342e' : '#999',
+  })
 
   return (
     <div>
-      <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-        例：「土10Lに対し20g」と書いてある場合、自分の土の量に必要な肥料量を計算します
-      </p>
-
-      <div className="form-group">
-        <label>自分の土の量</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            type="number"
-            placeholder="例: 5"
-            value={soilAmount}
-            onChange={e => setSoilAmount(e.target.value)}
-            min="0"
-            style={{ flex: 1 }}
-          />
-          <select value={soilUnit} onChange={e => setSoilUnit(e.target.value)} style={{ width: 80 }}>
-            <option value="L">L</option>
-            <option value="ml">ml</option>
-          </select>
-        </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <button style={tabStyle(mode === 'perL')} onClick={() => setMode('perL')}>
+          土1Lあたり●g
+        </button>
+        <button style={tabStyle(mode === 'planter')} onClick={() => setMode('planter')}>
+          ●Lプランターで●g
+        </button>
       </div>
 
-      <div className="form-group">
-        <label>説明書の記載（土 1L あたり 何g）</label>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 14, whiteSpace: 'nowrap', color: '#555' }}>土 1L に対し</span>
-          <input
-            type="number"
-            placeholder="例: 2"
-            value={fertPerUnit}
-            onChange={e => setFertPerUnit(e.target.value)}
-            min="0"
-            style={{ flex: 1 }}
-          />
-          <span style={{ fontSize: 14, color: '#555' }}>g</span>
-        </div>
-        <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
-          ※「10Lに20g」の場合は「2」と入力（20÷10=2）
-        </div>
-      </div>
+      {mode === 'perL' ? (
+        <>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            例：「土10Lに対し20g」と書いてある場合、自分の土の量に必要な肥料量を計算します
+          </p>
 
-      {isValid && (
-        <ResultBox
-          label={`土 ${soilAmount}${soilUnit} に必要な肥料の量`}
-          value={result % 1 === 0 ? result : result.toFixed(1)}
-          unit="g"
-        />
-      )}
-      {isValid && (
-        <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
-          <strong>計算式：</strong> {soilAmount}{soilUnit} × {fertPerUnit}g/L = {result.toFixed(2)} g
-        </div>
+          <div className="form-group">
+            <label>自分の土の量</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                placeholder="例: 5"
+                value={soilAmount}
+                onChange={e => setSoilAmount(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <select value={soilUnit} onChange={e => setSoilUnit(e.target.value)} style={{ width: 80 }}>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>説明書の記載（土 1L あたり 何g）</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 14, whiteSpace: 'nowrap', color: '#555' }}>土 1L に対し</span>
+              <input
+                type="number"
+                placeholder="例: 2"
+                value={fertPerUnit}
+                onChange={e => setFertPerUnit(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <span style={{ fontSize: 14, color: '#555' }}>g</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
+              ※「10Lに20g」の場合は「2」と入力（20÷10=2）
+            </div>
+          </div>
+
+          {isValidPerL && (
+            <ResultBox
+              label={`土 ${soilAmount}${soilUnit} に必要な肥料の量`}
+              value={resultPerL % 1 === 0 ? resultPerL : resultPerL.toFixed(1)}
+              unit="g"
+            />
+          )}
+          {isValidPerL && (
+            <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
+              <strong>計算式：</strong> {soilAmount}{soilUnit} × {fertPerUnit}g/L = {resultPerL.toFixed(2)} g
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            例：パッケージに「65cmプランターで100g」と書いてある場合、自分の土の量だと何g必要か計算します
+          </p>
+
+          <div className="form-group">
+            <label>自分の土の量</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                placeholder="例: 8"
+                value={soilAmount}
+                onChange={e => setSoilAmount(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <select value={soilUnit} onChange={e => setSoilUnit(e.target.value)} style={{ width: 80 }}>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>パッケージに書いてあるプランターのサイズ</label>
+            <select
+              value={planterSize}
+              onChange={e => setPlanterSize(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="">選択してください</option>
+              <option value="4">25cmプランター（土の量 約4L）</option>
+              <option value="5">36cmプランター（土の量 約5L）</option>
+              <option value="8">45cmプランター（土の量 約8L）</option>
+              <option value="10">55cmプランター（土の量 約10L）</option>
+              <option value="12">60cmプランター（土の量 約12L）</option>
+              <option value="14">65cmプランター（土の量 約14L）</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>そのプランターに使う肥料の量（g）</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="number"
+                placeholder="例: 100"
+                value={planterFert}
+                onChange={e => setPlanterFert(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <span style={{ fontSize: 14, color: '#555' }}>g</span>
+            </div>
+          </div>
+
+          {isValidPlanter && (
+            <ResultBox
+              label={`土 ${soilAmount}${soilUnit} に必要な肥料の量`}
+              value={resultPlanter % 1 === 0 ? resultPlanter : resultPlanter.toFixed(1)}
+              unit="g"
+            />
+          )}
+          {isValidPlanter && (
+            <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
+              <strong>計算式：</strong> {soilAmount}{soilUnit} ÷ {planterSize}L × {planterFert}g = {resultPlanter.toFixed(2)} g
+            </div>
+          )}
+        </>
       )}
     </div>
   )
