@@ -171,10 +171,19 @@ export default function VegetableList() {
       )}
 
       {vegetables.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: '#888', padding: 40 }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🌱</div>
-          <p>まだ野菜が登録されていません</p>
-          <p style={{ fontSize: 13, marginTop: 8 }}>「+ 追加」から野菜を登録してください</p>
+        <div className="card" style={{ textAlign: 'center', padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            height: 160,
+            background: 'linear-gradient(180deg, rgba(30,80,20,0.18) 0%, rgba(30,80,20,0.55) 100%), url(https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=600&q=80) center/cover no-repeat',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            paddingBottom: 16,
+          }}>
+            <span style={{ fontSize: 48, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))' }}>🌱</span>
+          </div>
+          <div style={{ padding: '20px 24px 24px', color: '#7a9a6a' }}>
+            <p style={{ fontWeight: 700, fontSize: 15, color: '#4a7c3f', marginBottom: 6 }}>さあ、菜園をはじめよう！</p>
+            <p style={{ fontSize: 13 }}>「+ 追加」から育てたい野菜を登録してください</p>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>

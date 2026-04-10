@@ -11,6 +11,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>🌱 ベランダ菜園管理</h1>
+        <p>My Little Green Garden</p>
       </header>
 
       <nav className="tab-nav">
