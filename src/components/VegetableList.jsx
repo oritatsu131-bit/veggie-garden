@@ -32,6 +32,10 @@ export default function VegetableList() {
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archivedVegetables))
   }, [archivedVegetables])
 
+  useEffect(() => {
+    vegetables.filter(v => !v.vegImageUrl).forEach(veg => fetchVegImage(veg))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function fetchVegImage(veg) {
     try {
       const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
