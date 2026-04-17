@@ -49,13 +49,26 @@ export default function VegetableList() {
     setFetchingIds(prev => new Set([...prev, veg.id]))
     setNotFoundIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
     try {
+      // まず直接検索
       const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
       const data = await res.json()
       if (data.thumbnail?.source) {
         setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
-      } else {
-        setNotFoundIds(prev => new Set([...prev, veg.id]))
+        return
       }
+      // 直接検索で画像がなければ検索APIで候補を探す
+      const searchRes = await fetch(`https://ja.wikipedia.org/w/api.php?origin=*&action=query&list=search&srsearch=${encodeURIComponent(veg.name)}&srlimit=3&format=json`)
+      const searchData = await searchRes.json()
+      const hits = searchData?.query?.search ?? []
+      for (const hit of hits) {
+        const summaryRes = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title)}`)
+        const summaryData = await summaryRes.json()
+        if (summaryData.thumbnail?.source) {
+          setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: summaryData.thumbnail.source } : v))
+          return
+        }
+      }
+      setNotFoundIds(prev => new Set([...prev, veg.id]))
     } catch {
       setNotFoundIds(prev => new Set([...prev, veg.id]))
     } finally {
