@@ -22,6 +22,7 @@ export default function VegetableList() {
   const [dragOverId, setDragOverId] = useState(null)
   const [fetchingIds, setFetchingIds] = useState(new Set())
   const [notFoundIds, setNotFoundIds] = useState(new Set())
+  const [brokenImageIds, setBrokenImageIds] = useState(new Set())
   const touchDraggingRef = useRef(false)
   const wasDragRef = useRef(false)
   const touchStartPos = useRef(null)
@@ -259,12 +260,12 @@ export default function VegetableList() {
                 userSelect: 'none',
               }}
             >
-              {veg.vegImageUrl ? (
+              {veg.vegImageUrl && !brokenImageIds.has(veg.id) ? (
                 <img
                   src={veg.vegImageUrl}
                   alt={veg.name}
                   style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
-                  onError={e => { e.target.style.display = 'none' }}
+                  onError={() => setBrokenImageIds(prev => new Set([...prev, veg.id]))}
                 />
               ) : (
                 <div style={{ marginBottom: 8, textAlign: 'center' }}>
