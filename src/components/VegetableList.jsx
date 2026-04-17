@@ -45,25 +45,26 @@ export default function VegetableList() {
     } catch {}
   }
 
-  async function fetchVegImageManual(veg) {
+  async function fetchVegImageManual(veg, skipUrl = null) {
     setFetchingIds(prev => new Set([...prev, veg.id]))
     setNotFoundIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
+    setBrokenImageIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
     try {
       // まず直接検索
       const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
       const data = await res.json()
-      if (data.thumbnail?.source) {
+      if (data.thumbnail?.source && data.thumbnail.source !== skipUrl) {
         setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
         return
       }
       // 直接検索で画像がなければ検索APIで候補を探す
-      const searchRes = await fetch(`https://ja.wikipedia.org/w/api.php?origin=*&action=query&list=search&srsearch=${encodeURIComponent(veg.name)}&srlimit=3&format=json`)
+      const searchRes = await fetch(`https://ja.wikipedia.org/w/api.php?origin=*&action=query&list=search&srsearch=${encodeURIComponent(veg.name)}&srlimit=5&format=json`)
       const searchData = await searchRes.json()
       const hits = searchData?.query?.search ?? []
       for (const hit of hits) {
         const summaryRes = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title)}`)
         const summaryData = await summaryRes.json()
-        if (summaryData.thumbnail?.source) {
+        if (summaryData.thumbnail?.source && summaryData.thumbnail.source !== skipUrl) {
           setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: summaryData.thumbnail.source } : v))
           return
         }
@@ -274,12 +275,31 @@ export default function VegetableList() {
               }}
             >
               {veg.vegImageUrl && !brokenImageIds.has(veg.id) ? (
-                <img
-                  src={veg.vegImageUrl}
-                  alt={veg.name}
-                  style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
-                  onError={() => setBrokenImageIds(prev => new Set([...prev, veg.id]))}
-                />
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <img
+                    src={veg.vegImageUrl}
+                    alt={veg.name}
+                    style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                    onError={() => setBrokenImageIds(prev => new Set([...prev, veg.id]))}
+                  />
+                  {fetchingIds.has(veg.id) ? (
+                    <div style={{
+                      position: 'absolute', top: 4, right: 4,
+                      background: 'rgba(0,0,0,0.5)', borderRadius: 4,
+                      padding: '2px 6px', fontSize: 10, color: 'white',
+                    }}>取得中…</div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); fetchVegImageManual(veg, veg.vegImageUrl) }}
+                      style={{
+                        position: 'absolute', top: 4, right: 4,
+                        background: 'rgba(0,0,0,0.45)', color: 'white',
+                        border: 'none', borderRadius: 4,
+                        padding: '2px 6px', fontSize: 10, cursor: 'pointer',
+                      }}
+                    >🔄 更新</button>
+                  )}
+                </div>
               ) : (
                 <div style={{ marginBottom: 8, textAlign: 'center' }}>
                   <div style={{ fontSize: 28, marginBottom: 6 }}>
