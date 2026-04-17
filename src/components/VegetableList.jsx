@@ -20,6 +20,8 @@ export default function VegetableList() {
   const [showArchive, setShowArchive] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
+  const [fetchingIds, setFetchingIds] = useState(new Set())
+  const [notFoundIds, setNotFoundIds] = useState(new Set())
   const touchDraggingRef = useRef(false)
   const wasDragRef = useRef(false)
   const touchStartPos = useRef(null)
@@ -40,6 +42,24 @@ export default function VegetableList() {
         setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
       }
     } catch {}
+  }
+
+  async function fetchVegImageManual(veg) {
+    setFetchingIds(prev => new Set([...prev, veg.id]))
+    setNotFoundIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
+    try {
+      const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
+      const data = await res.json()
+      if (data.thumbnail?.source) {
+        setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
+      } else {
+        setNotFoundIds(prev => new Set([...prev, veg.id]))
+      }
+    } catch {
+      setNotFoundIds(prev => new Set([...prev, veg.id]))
+    } finally {
+      setFetchingIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
+    }
   }
 
   function addVegetable(e) {
@@ -247,8 +267,24 @@ export default function VegetableList() {
                   onError={e => { e.target.style.display = 'none' }}
                 />
               ) : (
-                <div style={{ fontSize: 28, marginBottom: 8 }}>
-                  {veg.cultivationType === 'hydro' ? '💧' : '🪴'}
+                <div style={{ marginBottom: 8, textAlign: 'center' }}>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>
+                    {veg.cultivationType === 'hydro' ? '💧' : '🪴'}
+                  </div>
+                  {fetchingIds.has(veg.id) ? (
+                    <div style={{ fontSize: 11, color: '#aaa' }}>取得中…</div>
+                  ) : notFoundIds.has(veg.id) ? (
+                    <div style={{ fontSize: 11, color: '#e57373' }}>画像が見つかりませんでした</div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); fetchVegImageManual(veg) }}
+                      style={{
+                        fontSize: 11, padding: '3px 10px', borderRadius: 4,
+                        background: '#f0f7f0', color: '#4a7c3f',
+                        border: '1px solid #c8d8c0', cursor: 'pointer', fontWeight: 600,
+                      }}
+                    >画像登録</button>
+                  )}
                 </div>
               )}
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6, wordBreak: 'break-all' }}>
