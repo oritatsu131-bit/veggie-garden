@@ -15,68 +15,127 @@ function ResultBox({ label, value, unit }) {
 }
 
 function PesticideCalc() {
+  const [mode, setMode] = useState('total') // 'total' or 'water'
   const [waterAmount, setWaterAmount] = useState('')
   const [waterUnit, setWaterUnit] = useState('ml')
   const [ratio, setRatio] = useState('')
 
   const waterMl = waterUnit === 'L' ? parseFloat(waterAmount) * 1000 : parseFloat(waterAmount)
   const ratioNum = parseFloat(ratio)
-  const result = waterMl / ratioNum
-  const isValid = waterMl > 0 && ratioNum > 0 && !isNaN(result)
+
+  // 総量モード: 総量 ÷ 倍率
+  const resultTotal = waterMl / ratioNum
+  const isValidTotal = waterMl > 0 && ratioNum > 0 && !isNaN(resultTotal)
+
+  // 水の量モード: 水 ÷ (倍率 - 1)
+  const resultWater = waterMl / (ratioNum - 1)
+  const isValidWater = waterMl > 0 && ratioNum > 1 && !isNaN(resultWater)
 
   function formatResult(ml) {
     if (ml >= 1) return { value: ml.toFixed(1), unit: 'ml' }
     return { value: (ml * 1000).toFixed(1), unit: 'μl（マイクロリットル）' }
   }
 
-  const formatted = isValid ? formatResult(result) : null
+  const tabStyle = (active) => ({
+    flex: 1, padding: '8px 4px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+    border: `2px solid ${active ? '#e53935' : '#ddd'}`,
+    background: active ? '#ffebee' : 'white',
+    color: active ? '#c62828' : '#999',
+  })
 
   return (
     <div>
-      <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-        例：「300倍希釈」で「500ml」作りたい場合 → 農薬を何ml入れるか計算します
-      </p>
-
-      <div className="form-group">
-        <label>作りたい水の量</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            type="number"
-            placeholder="例: 500"
-            value={waterAmount}
-            onChange={e => setWaterAmount(e.target.value)}
-            min="0"
-            style={{ flex: 1 }}
-          />
-          <select value={waterUnit} onChange={e => setWaterUnit(e.target.value)} style={{ width: 80 }}>
-            <option value="ml">ml</option>
-            <option value="L">L</option>
-          </select>
-        </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <button style={tabStyle(mode === 'total')} onClick={() => setMode('total')}>
+          作りたい総量から計算
+        </button>
+        <button style={tabStyle(mode === 'water')} onClick={() => setMode('water')}>
+          水の量から計算
+        </button>
       </div>
 
-      <div className="form-group">
-        <label>希釈倍率（〇〇倍）</label>
-        <input
-          type="number"
-          placeholder="例: 300"
-          value={ratio}
-          onChange={e => setRatio(e.target.value)}
-          min="1"
-        />
-      </div>
-
-      {isValid && formatted && (
-        <ResultBox
-          label={`${waterAmount}${waterUnit} を ${ratio}倍希釈するのに必要な農薬の量`}
-          value={formatted.value}
-          unit={formatted.unit}
-        />
-      )}
-      {isValid && (
-        <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
-          <strong>計算式：</strong> {waterAmount}{waterUnit}（={waterMl}ml）÷ {ratio}倍 = {result.toFixed(2)} ml
-        </div>
+      {mode === 'total' ? (
+        <>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            例：「300倍希釈」で「500ml」作りたい場合 → 農薬を何ml入れるか計算します
+          </p>
+          <div className="form-group">
+            <label>作りたい総量</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                placeholder="例: 500"
+                value={waterAmount}
+                onChange={e => setWaterAmount(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <select value={waterUnit} onChange={e => setWaterUnit(e.target.value)} style={{ width: 80 }}>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>希釈倍率（〇〇倍）</label>
+            <input
+              type="number"
+              placeholder="例: 300"
+              value={ratio}
+              onChange={e => setRatio(e.target.value)}
+              min="1"
+            />
+          </div>
+          {isValidTotal && (() => { const f = formatResult(resultTotal); return (
+            <>
+              <ResultBox label={`${waterAmount}${waterUnit} を ${ratio}倍希釈するのに必要な農薬の量`} value={f.value} unit={f.unit} />
+              <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
+                <strong>計算式：</strong> {waterAmount}{waterUnit}（={waterMl}ml）÷ {ratio}倍 = {resultTotal.toFixed(2)} ml
+              </div>
+            </>
+          )})()}
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            例：「500mlの水」に「50倍希釈」の農薬を使いたい場合 → 原液を何ml入れるか計算します
+          </p>
+          <div className="form-group">
+            <label>用意した水の量</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                placeholder="例: 500"
+                value={waterAmount}
+                onChange={e => setWaterAmount(e.target.value)}
+                min="0"
+                style={{ flex: 1 }}
+              />
+              <select value={waterUnit} onChange={e => setWaterUnit(e.target.value)} style={{ width: 80 }}>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>希釈倍率（〇〇倍）</label>
+            <input
+              type="number"
+              placeholder="例: 50"
+              value={ratio}
+              onChange={e => setRatio(e.target.value)}
+              min="2"
+            />
+          </div>
+          {isValidWater && (() => { const f = formatResult(resultWater); return (
+            <>
+              <ResultBox label={`${waterAmount}${waterUnit} の水に加える原液の量`} value={f.value} unit={f.unit} />
+              <div style={{ marginTop: 12, background: '#f5f5f5', borderRadius: 8, padding: 12, fontSize: 13, color: '#555' }}>
+                <strong>計算式：</strong> {waterAmount}{waterUnit}（={waterMl}ml）÷（{ratio}倍 − 1）= {resultWater.toFixed(2)} ml
+              </div>
+            </>
+          )})()}
+        </>
       )}
     </div>
   )
