@@ -22,6 +22,7 @@ export default function Calendar() {
   })
   const [showForm, setShowForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState(null)
+  const [filterDate, setFilterDate] = useState(null)
   const [form, setForm] = useState({ type: 'sowing', vegetable: '', note: '', photos: [], harvestCount: '' })
   const [expandedEvent, setExpandedEvent] = useState(null)
   const [editingEventId, setEditingEventId] = useState(null)
@@ -40,12 +41,12 @@ export default function Calendar() {
   function getFirstDay(y, m) { return new Date(y, m, 1).getDay() }
 
   function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11) }
-    else setMonth(m => m - 1)
+    if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1)
+    setFilterDate(null)
   }
   function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0) }
-    else setMonth(m => m + 1)
+    if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1)
+    setFilterDate(null)
   }
 
   function dateKey(y, m, d) {
@@ -60,6 +61,12 @@ export default function Calendar() {
     setSelectedDate(d)
     setForm({ type: 'sowing', vegetable: vegetables[0]?.name || '', note: '', photos: [], harvestCount: '' })
     setShowForm(true)
+    setExpandedEvent(null)
+  }
+
+  function selectFilterDate(d) {
+    setFilterDate(prev => prev === d ? null : d)
+    setShowForm(false)
     setExpandedEvent(null)
   }
 
@@ -192,11 +199,13 @@ export default function Calendar() {
             const dayEvents = eventsOnDay(d)
             const isToday = dateKey(year, month, d) === todayKey
             const dow = (firstDay + d - 1) % 7
+            const isFiltered = filterDate === d
             return (
-              <div key={d} onClick={() => openAddForm(d)} style={{
-                minHeight: 52, border: isToday ? '2px solid #4a7c3f' : '1px solid #eee',
+              <div key={d} onClick={() => selectFilterDate(d)} style={{
+                minHeight: 52,
+                border: isFiltered ? '2px solid #1565c0' : isToday ? '2px solid #4a7c3f' : '1px solid #eee',
                 borderRadius: 6, padding: '2px 4px', cursor: 'pointer',
-                background: isToday ? '#f0f7ee' : 'white',
+                background: isFiltered ? '#e3f2fd' : isToday ? '#f0f7ee' : 'white',
               }}>
                 <div style={{
                   fontSize: 12, fontWeight: isToday ? 700 : 400,
@@ -289,9 +298,34 @@ export default function Calendar() {
 
       {/* 今月のイベント一覧 */}
       <div style={{ marginTop: 8 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>今月の記録</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          {filterDate ? (
+            <>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>
+                {monthNames[month]}{filterDate}日の記録
+              </h3>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 12, padding: '5px 10px' }}
+                  onClick={() => openAddForm(filterDate)}
+                >+ 記録を追加</button>
+                <button
+                  className="btn-secondary"
+                  style={{ fontSize: 12, padding: '5px 10px' }}
+                  onClick={() => setFilterDate(null)}
+                >← 月全体に戻る</button>
+              </div>
+            </>
+          ) : (
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>今月の記録</h3>
+          )}
+        </div>
         {events
-          .filter(e => e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
+          .filter(e => filterDate
+            ? e.date === dateKey(year, month, filterDate)
+            : e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)
+          )
           .sort((a, b) => b.date.localeCompare(a.date))
           .map(ev => {
             const type = EVENT_TYPES.find(t => t.value === ev.type)
@@ -402,9 +436,12 @@ export default function Calendar() {
               </div>
             )
           })}
-        {events.filter(e => e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)).length === 0 && (
+        {events.filter(e => filterDate
+          ? e.date === dateKey(year, month, filterDate)
+          : e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)
+        ).length === 0 && (
           <div style={{ textAlign: 'center', color: '#aaa', padding: 20, fontSize: 14 }}>
-            この月の記録はありません
+            {filterDate ? 'この日の記録はありません' : 'この月の記録はありません'}
           </div>
         )}
       </div>
