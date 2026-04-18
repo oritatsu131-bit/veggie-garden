@@ -2,6 +2,7 @@ import { useState } from 'react'
 import VegetableList from './components/VegetableList'
 import Calendar from './components/Calendar'
 import Calculator from './components/Calculator'
+import Materials from './components/Materials'
 import './App.css'
 
 function App() {
@@ -19,13 +20,19 @@ function App() {
           className={activeTab === 'vegetables' ? 'active' : ''}
           onClick={() => setActiveTab('vegetables')}
         >
-          🥬 野菜管理
+          🥬 野菜
         </button>
         <button
           className={activeTab === 'calendar' ? 'active' : ''}
           onClick={() => setActiveTab('calendar')}
         >
-          📅 カレンダー
+          📅 記録
+        </button>
+        <button
+          className={activeTab === 'materials' ? 'active' : ''}
+          onClick={() => setActiveTab('materials')}
+        >
+          📦 資材
         </button>
         <button
           className={activeTab === 'calculator' ? 'active' : ''}
@@ -38,6 +45,7 @@ function App() {
       <main className="app-main">
         {activeTab === 'vegetables' && <VegetableList />}
         {activeTab === 'calendar' && <Calendar />}
+        {activeTab === 'materials' && <Materials />}
         {activeTab === 'calculator' && <Calculator />}
       </main>
     </div>
