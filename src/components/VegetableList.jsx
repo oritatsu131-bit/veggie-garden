@@ -26,6 +26,8 @@ export default function VegetableList() {
   const touchDraggingRef = useRef(false)
   const wasDragRef = useRef(false)
   const touchStartPos = useRef(null)
+  const fileUploadRef = useRef(null)
+  const uploadVegIdRef = useRef(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vegetables))
@@ -34,6 +36,41 @@ export default function VegetableList() {
   useEffect(() => {
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archivedVegetables))
   }, [archivedVegetables])
+
+  function compressImage(file, callback) {
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 800
+        let w = img.width, h = img.height
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        callback(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleVegImageUpload(e) {
+    const file = e.target.files[0]
+    if (!file || !uploadVegIdRef.current) return
+    const vegId = uploadVegIdRef.current
+    compressImage(file, (url) => {
+      setVegetables(prev => prev.map(v => v.id === vegId ? { ...v, vegImageUrl: url } : v))
+      setBrokenImageIds(prev => { const s = new Set(prev); s.delete(vegId); return s })
+    })
+    e.target.value = ''
+  }
+
+  function triggerUpload(vegId) {
+    uploadVegIdRef.current = vegId
+    fileUploadRef.current.click()
+  }
 
   async function fetchVegImage(veg) {
     try {
@@ -50,14 +87,12 @@ export default function VegetableList() {
     setNotFoundIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
     setBrokenImageIds(prev => { const s = new Set(prev); s.delete(veg.id); return s })
     try {
-      // まず直接検索
       const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(veg.name)}`)
       const data = await res.json()
       if (data.thumbnail?.source && data.thumbnail.source !== skipUrl) {
         setVegetables(prev => prev.map(v => v.id === veg.id ? { ...v, vegImageUrl: data.thumbnail.source } : v))
         return
       }
-      // 直接検索で画像がなければ検索APIで候補を探す
       const searchRes = await fetch(`https://ja.wikipedia.org/w/api.php?origin=*&action=query&list=search&srsearch=${encodeURIComponent(veg.name)}&srlimit=5&format=json`)
       const searchData = await searchRes.json()
       const hits = searchData?.query?.search ?? []
@@ -154,6 +189,7 @@ export default function VegetableList() {
 
   return (
     <div>
+      <input ref={fileUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleVegImageUpload} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700 }}>育てている野菜</h2>
         <button className="btn-primary" onClick={() => setShowForm(true)}>+ 追加</button>
@@ -289,15 +325,24 @@ export default function VegetableList() {
                       padding: '2px 6px', fontSize: 10, color: 'white',
                     }}>取得中…</div>
                   ) : (
-                    <button
-                      onClick={e => { e.stopPropagation(); fetchVegImageManual(veg, veg.vegImageUrl) }}
-                      style={{
-                        position: 'absolute', top: 4, right: 4,
-                        background: 'rgba(0,0,0,0.45)', color: 'white',
-                        border: 'none', borderRadius: 4,
-                        padding: '2px 6px', fontSize: 10, cursor: 'pointer',
-                      }}
-                    >🔄 更新</button>
+                    <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 3 }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); triggerUpload(veg.id) }}
+                        style={{
+                          background: 'rgba(0,0,0,0.45)', color: 'white',
+                          border: 'none', borderRadius: 4,
+                          padding: '2px 6px', fontSize: 10, cursor: 'pointer',
+                        }}
+                      >📷</button>
+                      <button
+                        onClick={e => { e.stopPropagation(); fetchVegImageManual(veg, veg.vegImageUrl) }}
+                        style={{
+                          background: 'rgba(0,0,0,0.45)', color: 'white',
+                          border: 'none', borderRadius: 4,
+                          padding: '2px 6px', fontSize: 10, cursor: 'pointer',
+                        }}
+                      >🔄</button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -308,16 +353,36 @@ export default function VegetableList() {
                   {fetchingIds.has(veg.id) ? (
                     <div style={{ fontSize: 11, color: '#aaa' }}>取得中…</div>
                   ) : notFoundIds.has(veg.id) ? (
-                    <div style={{ fontSize: 11, color: '#e57373' }}>画像が見つかりませんでした</div>
+                    <>
+                      <div style={{ fontSize: 11, color: '#e57373', marginBottom: 4 }}>Wikiに画像なし</div>
+                      <button
+                        onClick={e => { e.stopPropagation(); triggerUpload(veg.id) }}
+                        style={{
+                          fontSize: 11, padding: '3px 10px', borderRadius: 4,
+                          background: '#e3f2fd', color: '#1565c0',
+                          border: '1px solid #90caf9', cursor: 'pointer', fontWeight: 600,
+                        }}
+                      >📷 写真を選ぶ</button>
+                    </>
                   ) : (
-                    <button
-                      onClick={e => { e.stopPropagation(); fetchVegImageManual(veg) }}
-                      style={{
-                        fontSize: 11, padding: '3px 10px', borderRadius: 4,
-                        background: '#f0f7f0', color: '#4a7c3f',
-                        border: '1px solid #c8d8c0', cursor: 'pointer', fontWeight: 600,
-                      }}
-                    >画像登録</button>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); fetchVegImageManual(veg) }}
+                        style={{
+                          fontSize: 11, padding: '3px 8px', borderRadius: 4,
+                          background: '#f0f7f0', color: '#4a7c3f',
+                          border: '1px solid #c8d8c0', cursor: 'pointer', fontWeight: 600,
+                        }}
+                      >🌐 Wiki</button>
+                      <button
+                        onClick={e => { e.stopPropagation(); triggerUpload(veg.id) }}
+                        style={{
+                          fontSize: 11, padding: '3px 8px', borderRadius: 4,
+                          background: '#e3f2fd', color: '#1565c0',
+                          border: '1px solid #90caf9', cursor: 'pointer', fontWeight: 600,
+                        }}
+                      >📷 写真</button>
+                    </div>
                   )}
                 </div>
               )}
